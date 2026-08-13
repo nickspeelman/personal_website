@@ -103,6 +103,68 @@
         width: 180px;
       }
     }
+
+
+    .privacy-link {
+      color: white;
+      text-decoration: underline;
+      cursor: pointer;
+      background: none;
+      border: 0;
+      font: inherit;
+      padding: 0;
+    }
+    .cookie-banner {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      max-width: 720px;
+      margin: 0 auto;
+      background: #fff;
+      color: #2c3e50;
+      border: 1px solid #b8c7d4;
+      border-radius: 10px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.18);
+      padding: 18px;
+      z-index: 1000;
+    }
+    .cookie-banner[hidden] { display: none; }
+    .cookie-banner p { margin: 0 0 12px; }
+    .cookie-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .cookie-actions button {
+      border: 0;
+      border-radius: 6px;
+      padding: 9px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .cookie-accept { background: #2980b9; color: white; }
+    .cookie-reject { background: #e9eef2; color: #2c3e50; }
+    .privacy-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      background: rgba(0,0,0,.55);
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    .privacy-modal[hidden] { display: none; }
+    .privacy-card {
+      background: white;
+      max-width: 700px;
+      max-height: 85vh;
+      overflow: auto;
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 10px 35px rgba(0,0,0,.25);
+    }
+    .privacy-card h2 { margin-top: 0; }
+    .privacy-card button {
+      background: #2980b9; color: white; border: 0; border-radius: 6px;
+      padding: 9px 14px; cursor: pointer; font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -168,7 +230,111 @@
   </section>
 
   <footer>
-    <p>&copy; Nick Speelman</p>
+    <p>&copy; Nick Speelman &middot; <button class="privacy-link" type="button" id="privacy-open">Privacy &amp; Analytics</button> &middot; <button class="privacy-link" type="button" id="cookie-settings">Cookie settings</button></p>
   </footer>
+
+  <div class="cookie-banner" id="cookie-banner" role="dialog" aria-live="polite" aria-label="Analytics cookies" hidden>
+    <p><strong>Analytics cookies</strong></p>
+    <p>This site uses Google Analytics to understand basic traffic and which projects people visit. Analytics is optional and will not load unless you accept.</p>
+    <div class="cookie-actions">
+      <button class="cookie-accept" id="cookie-accept" type="button">Accept analytics</button>
+      <button class="cookie-reject" id="cookie-reject" type="button">Decline</button>
+      <button class="cookie-reject" id="privacy-from-banner" type="button">Privacy details</button>
+    </div>
+  </div>
+
+  <div class="privacy-modal" id="privacy-modal" role="dialog" aria-modal="true" aria-labelledby="privacy-title" hidden>
+    <div class="privacy-card">
+      <h2 id="privacy-title">Privacy &amp; Analytics</h2>
+      <p>This is a personal website operated by Nick Speelman. I do not sell personal information, run advertising, or ask visitors to create accounts on this site.</p>
+      <p>If you choose to accept analytics, this site uses Google Analytics 4 to collect information about visits and interactions, such as pages viewed, approximate location derived from network information, device/browser information, and clicks on project or external links. I use that information only to understand how the site and its projects are being used. For visitors where consent is required, consent is the basis for this analytics processing.</p>
+      <p>Google Analytics is provided by Google and may use cookies or similar technologies after you consent. Analytics is disabled unless and until you choose “Accept analytics.” If you decline, the site remains fully usable. Your consent choice is stored locally in your browser so the site can remember it. Analytics information may be processed by Google in countries outside your own, including the United States, subject to Google's applicable data-protection arrangements.</p>
+      <p>You can withdraw or change your choice at any time using “Cookie settings” in the footer. Changing from accepted to declined stops future Analytics collection on this site; previously collected data remains subject to Google Analytics retention and deletion controls. Depending on where you live, you may also have rights concerning personal data, including access, correction, deletion, restriction, objection, or a complaint to your local data-protection authority.</p>
+      <p>Some links on this site lead to third-party websites such as GitHub, YouTube, Medium, SoundCloud, or other project sites. Those services have their own privacy practices, which are outside this site's control.</p>
+      <p>This notice may be updated if the site's data practices change.</p>
+      <button id="privacy-close" type="button">Close</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const GA_ID = 'G-DG77HP4Q25';
+      const CONSENT_KEY = 'analytics_consent';
+      let analyticsLoaded = false;
+
+      function loadAnalytics() {
+        if (analyticsLoaded) return;
+        analyticsLoaded = true;
+
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function(){ dataLayer.push(arguments); };
+        gtag('js', new Date());
+        gtag('config', GA_ID);
+
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(GA_ID);
+        document.head.appendChild(script);
+      }
+
+      function track(name, params) {
+        if (localStorage.getItem(CONSENT_KEY) !== 'granted' || typeof window.gtag !== 'function') return;
+        gtag('event', name, params || {});
+      }
+
+      const banner = document.getElementById('cookie-banner');
+      const modal = document.getElementById('privacy-modal');
+      const consent = localStorage.getItem(CONSENT_KEY);
+
+      if (consent === 'granted') {
+        loadAnalytics();
+      } else if (consent !== 'denied') {
+        banner.hidden = false;
+      }
+
+      document.getElementById('cookie-accept').addEventListener('click', function () {
+        localStorage.setItem(CONSENT_KEY, 'granted');
+        banner.hidden = true;
+        loadAnalytics();
+        track('analytics_consent', { choice: 'granted' });
+      });
+
+      document.getElementById('cookie-reject').addEventListener('click', function () {
+        localStorage.setItem(CONSENT_KEY, 'denied');
+        banner.hidden = true;
+      });
+
+      document.getElementById('cookie-settings').addEventListener('click', function () {
+        localStorage.removeItem(CONSENT_KEY);
+        banner.hidden = false;
+      });
+
+      function openPrivacy() { modal.hidden = false; }
+      function closePrivacy() { modal.hidden = true; }
+      document.getElementById('privacy-open').addEventListener('click', openPrivacy);
+      document.getElementById('privacy-from-banner').addEventListener('click', openPrivacy);
+      document.getElementById('privacy-close').addEventListener('click', closePrivacy);
+      modal.addEventListener('click', function (event) { if (event.target === modal) closePrivacy(); });
+      document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !modal.hidden) closePrivacy(); });
+
+      document.querySelectorAll('nav a').forEach(function (link) {
+        link.addEventListener('click', function () {
+          track('navigation_click', { destination: link.getAttribute('href') || '', link_text: link.textContent.trim() });
+        });
+      });
+
+      document.querySelectorAll('.project-list a').forEach(function (link) {
+        link.addEventListener('click', function () {
+          track('project_click', { project_name: link.textContent.trim(), link_url: link.href });
+        });
+      });
+
+      document.querySelectorAll('section a:not(.project-list a)').forEach(function (link) {
+        link.addEventListener('click', function () {
+          track('external_link_click', { link_text: link.textContent.trim(), link_url: link.href, section: link.closest('section')?.id || '' });
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
